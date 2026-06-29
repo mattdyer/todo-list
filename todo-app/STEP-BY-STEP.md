@@ -13,6 +13,9 @@ This document provides an exhaustive, granular guide for building the Todo List 
 3. Install the base dependencies:
    ```bash
    npm install
+4. Run the development server to be sure:
+   ```bash
+   npm run dev
    ```
 
 ### 1.2 Install CSS and Styling Dependencies
@@ -140,7 +143,7 @@ This document provides an exhaustive, granular guide for building the Todo List 
 ### 4.2 Core UI - Task Item (Recursive)
 20. Create `src/components/TodoItem.tsx`.
     - This component renders a `TodoItem` structure.
-    - Logic: If `subItems` exist, render a nested list of `SubItem` components or recursive `TodoItem` style components.
+    - Logic: If `subItems` exist, the component should recursively call itself to render the sub-items.
     - Include a checkbox for completion.
     - Include a "Delete" button and an "Add Sub-item" button.
 
@@ -165,6 +168,7 @@ This document provides an exhaustive, granular guide for building the Todo List 
 24. Create `src/components/PrintView.tsx`.
     - This component should purely render the selected day's list in a simplified, clean format.
     - Use `window.print()` trigger button.
+    - IMPORTANT: Wrap the contents of this component (or the container in App.tsx) in an element with `id="print-area"` to correspond with the CSS print rules.
 
 ---
 
@@ -208,7 +212,7 @@ This document provides an exhaustive, granular guide for building the Todo List 
     - **Test 1**: User enters a task in the master list and sees it appear.
     - **Test 2**: User creates a new day and moves a task from the master list to that day.
     - **Test 3**: User checks off a sub-item and verifies the UI updates.
-    - **Test 4**: User clicks print and verify the print-specific elements are present.
+    - **Test 4**: User clicks print and verifies that the print-specific elements are visible and the 'no-print' elements are hidden.
 
 ### 7.3 Final Check
 32. Run all tests:
