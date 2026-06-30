@@ -43,6 +43,6 @@ test.describe('Todo Application E2E', () => {
     
     // It should navigate to today's date (assuming it's the same for the test)
     const today = new Date().toISOString().split('T')[0];
-    await expect(page.locator('h2')).toContainText(`Daily List: ${today}`);
+    await expect(page.getByRole('heading', { name: `Daily List: ${today}` })).toBeVisible();
   });
 });
