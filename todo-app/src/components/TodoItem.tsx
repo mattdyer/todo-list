@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TodoItem as TodoItemType } from '../types/todo';
-import TodoInput from './TodoInput';
 
 interface TodoItemProps {
   task: TodoItemType;
@@ -8,8 +7,6 @@ interface TodoItemProps {
   onToggle: (id: string, subItemId?: string) => void;
   onAddSubItem: (taskId: string) => void;
   isSubItem?: boolean;
-  date?: string;
-  onMove?: (taskId: string, date: string) => void;
 }
 
 const TodoItem: React.FC<TodoItemProps> = ({
@@ -18,12 +15,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
   onToggle,
   onAddSubItem,
   isSubItem = false,
-  date,
-  onMove,
-  onAddTaskToDate,
 }) => {
-  const [isAddingSubItem, setIsAddingSubItem] = useState(false);
-
   const handleToggle = () => {
     onToggle(task.id);
   };
@@ -33,7 +25,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
   };
 
   return (
-    <div className={`ml-${isSubItem ? '6' : '0'} mt-2 p-2 border-l-2 border-blue-200 bg-white/50 rounded-r ${isSubItem ? 'ml-4' : ''}`}>
+    <div className={`mt-2 p-2 border-l-2 border-blue-200 bg-white/50 rounded-r ${isSubItem ? 'ml-6' : ''}`}>
       <div className="flex items-center justify-between group">
         <div className="flex items-center gap-2 flex-1">
           <input
@@ -58,14 +50,6 @@ const TodoItem: React.FC<TodoItemProps> = ({
               + Sub-item
             </button>
           )}
-          {!isSubItem && onMove && date && (
-            <button
-              onClick={() => onMove(task.id, date)}
-              className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
-            >
-              Move
-            </button>
-          )}
           <button
             onClick={() => onDelete(task.id)}
             className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
@@ -75,29 +59,20 @@ const TodoItem: React.FC<TodoItemProps> = ({
         </div>
       </div>
 
-      {isAddingSubItem && (
-        <div className="mt-2">
-          <TodoInput
-            onAdd={(text) => {
-              // This is tricky because we need to call addSubItem.
-              // But TodoInput calls onAdd(text). 
-              // We'll need to pass the correct implementation.
-            }}
-          />
-        </div>
-      )}
-
       {task.subItems.length > 0 && (
         <div className="ml-4 mt-2 space-y-1">
           {task.subItems.map((subItem) => (
-            <TodoItem
-              key={subItem.id}
-              task={subItem as any} // Type assertion because subItems are TodoItem but actually they are SubItem (which is a subset)
-              onDelete={() => {}} // Should we be able to delete sub-items? Yes, but the context needs a way.
-              onToggle={handleSubItemToggle}
-              onAddSubItem={() => {}}
-              isSubItem={true}
-            />
+            <div key={subItem.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={subItem.completed}
+                onChange={() => handleSubItemToggle(subItem.id)}
+                className="w-4 h-4 cursor-pointer"
+              />
+              <span className={`text-sm ${subItem.completed ? 'line-through text-gray-500' : ''}`}>
+                {subItem.text}
+              </span>
+            </div>
           ))}
         </div>
       )}
