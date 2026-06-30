@@ -74,11 +74,11 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   }, []);
 
-  const toggleTaskCompletion = useCallback((id: string, subItemId?: string) => {
+  const toggleTaskCompletion = useCallback((id:string, subItemId?:string) => {
     setState((prev) => {
       const updateItem = (item: TodoItem): TodoItem => {
         if (subItemId) {
-          if (item.id === id || item.subItems.some((si) => si.id === subItemId)) {
+          if (item.id === id) {
             const newSubItems = item.subItems.map((si) =>
               si.id === subItemId ? { ...si, completed: !si.completed } : si
             );
@@ -122,7 +122,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const updateDailyList = (dailyList: DailyList): DailyList => ({
         ...dailyList,
-        items: dailyList.items.map(updateItem),
+        items: dailyList.items.map((item) => updateItem(item)),
       });
 
       const newMasterList = prev.masterList.map(updateItem);
@@ -142,15 +142,18 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const newMasterList = prev.masterList.filter((task) => task.id !== taskId);
       const dailyList = prev.dailyLists[date] || { date, items: [] };
-      const newDailyLists = {
-        ...prev.dailyLists,
-        [date]: {
-          ...dailyList,
-          items: [...dailyList.items, taskToMove],
+
+      return {
+        ...prev,
+        masterList: newMasterList,
+        dailyLists: {
+          ...prev.dailyLists,
+          [date]: {
+            ...dailyList,
+            items: [...dailyList.items, taskToMove],
+          },
         },
       };
-
-      return { ...prev, masterList: newMasterList, dailyLists: newDailyLists };
     });
   }, []);
 
@@ -189,4 +192,6 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <TodoContext.Provider value={contextValue}>{children}</TodoContext.Provider>
   );
-}, []);
+};
+
+export { useTodo } from '../hooks/useTodo';
