@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
 import { AppState, TodoItem, DailyList, SubItem } from '../types/todo';
 
 interface TodoContextType extends AppState {
@@ -21,7 +21,7 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         try {
           return JSON.parse(saved);
         } catch (e) {
-          console.error("Failed to parse saved state", e);
+          console.error('Failed to parse saved state', e);
         }
       }
     }
@@ -32,77 +32,161 @@ export const TodoProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('todo-app-state', JSON.stringify(state));
   }, [state]);
 
-  const addMasterTask = (text: string) => {
+  const addMasterTask = useCallback((text: string) => {
     const newTask: TodoItem = {
       id: crypto.randomUUID(),
       text,
       completed: false,
       subItems: [],
     };
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       masterList: [...prev.masterList, newTask],
     }));
-  };
+  }, []);
 
-  const deleteMasterTask = (id: string) => {
-    setState(prev => ({
+  const deleteMasterTask = useCallback((id: string) => {
+    setState((prev) => ({
       ...prev,
-      masterList: prev.masterList.filter(task => task.id !== id),
+      masterList: prev.masterList.filter((task) => task.id !== id),
     }));
-  };
+  }, []);
 
-  const addTaskToDate = (date: string, text: string) => {
+  const addTaskToDate = useCallback((date: string, text: string) => {
     const newTask: TodoItem = {
       id: crypto.randomUUID(),
       text,
       completed: false,
       subItems: [],
     };
-    setState(prev => {
+    setState((prev) => {
       const dailyList = prev.dailyLists[date] || { date, items: [] };
       return {
         ...prev,
         dailyLists: {
           ...prev.dailyLists,
-          [date]: { ...dailyList, items: [...dailyList.items, newTask] }
-        }
+          [date]: {
+            ...dailyList,
+            items: [...dailyList.items, newTask],
+          },
+        },
       };
     });
-  };
+  }, []);
 
-  const toggleTaskCompletion = (id: string, subItemId?: string) => {
-    setState(prev => {
-      const toggleInMaster = (task: TodoItem): TodoItem => {
-        if (task.id === id) {
-          if (subItemId) {
-            const newSubItems = task.subItems.map(si =>
+  const toggleTaskCompletion = useCallback((id: string, subItemId?: string) => {
+    setState((prev) => {
+      const updateItem = (item: TodoItem): TodoItem => {
+        if (subItemId) {
+          if (item.id === id || item.subItems.some((si) => si.id === subItemId)) {
+            const newSubItems = item.subItems.map((si) =>
               si.id === subItemId ? { ...si, completed: !si.completed } : si
             );
-            const allSubItemsDone = newSubItems.length > 0 && newSubItems.every(si => si.completed);
-            return { ...task, subItems: newSubItems, completed: allSubItemsDone };
+            const allDone = newSubItems.length > 0 && newSubItems.every((si) => si.completed);
+            return { ...item, subItems: newSubItems, completed: allDone };
           }
-          return { ...task, completed: !task.completed };
+          return item;
         }
-        return task;
+        if (item.id === id) {
+          return { ...item, completed: !item.completed };
+        }
+        return item;
       };
 
-      const toggleInDaily = (dailyList: DailyList): DailyList => ({
+      const newMasterList = prev.masterList.map(updateItem);
+      const newDailyLists: Record<string, DailyList> = {};
+      for (const date in prev.dailyLists) {
+        newDailyLists[date] = {
+          ...prev.dailyLists[date],
+          items: prev.dailyLists[date].items.map(updateItem),
+        };
+      }
+
+      return { ...prev, masterList: newMasterList, dailyLists: newDailyLists };
+    });
+  }, []);
+
+  const addSubItem = useCallback((taskId: string, subItemText: string) => {
+    const newSubItem: SubItem = {
+      id: crypto.randomUUID(),
+      text: subItemText,
+      completed: false,
+    };
+    setState((prev) => {
+      const updateItem = (item: TodoItem): TodoItem => {
+        if (item.id === taskId) {
+          return { ...item, subItems: [...item.subItems, newSubItem] };
+        }
+        return item;
+      };
+
+      const updateDailyList = (dailyList: DailyList): DailyList => ({
         ...dailyList,
-        items: daily.items.map(toggleInMaster) // Wait, 'daily' is not defined.
+        items: dailyList.items.map(updateItem),
       });
 
-      // This is still getting complex. Let's use a more robust approach.
-      return prev;
-    });
-  };
+      const newMasterList = prev.masterList.map(updateItem);
+      const newDailyLists: Record<string, DailyList> = {};
+      for (const date in prev.dailyLists) {
+        newDailyLists[date] = updateDailyList(prev.dailyLists[date]);
+      }
 
-  // I'll just implement the basics correctly and then expand.
-  // Let's use a simpler approach for the context.
+      return { ...prev, masterList: newMasterList, dailyLists: newDailyLists };
+    });
+  }, []);
+
+  const moveTaskToDate = useCallback((taskId: string, date: string) => {
+    setState((prev) => {
+      const taskToMove = prev.masterList.find((task) => task.id === taskId);
+      if (!taskToMove) return prev;
+
+      const newMasterList = prev.masterList.filter((task) => task.id !== taskId);
+      const dailyList = prev.dailyLists[date] || { date, items: [] };
+      const newDailyLists = {
+        ...prev.dailyLists,
+        [date]: {
+          ...dailyList,
+          items: [...dailyList.items, taskToMove],
+        },
+      };
+
+      return { ...prev, masterList: newMasterList, dailyLists: newDailyLists };
+    });
+  }, []);
+
+  const deleteDailyTask = useCallback((date: string, taskId: string) => {
+    setState((prev) => {
+      const dailyList = prev.dailyLists[date];
+      if (!dailyList) return prev;
+
+      return {
+        ...prev,
+        dailyLists: {
+          ...prev.dailyLists,
+          [date]: {
+            ...dailyList,
+            items: dailyList.items.filter((task) => task.id !== taskId),
+          },
+        },
+      };
+    });
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      ...state,
+      addMasterTask,
+      deleteMasterTask,
+      addTaskToDate,
+      toggleTaskCompletion,
+      addSubItem,
+      moveTaskToDate,
+      deleteDailyTask,
+    }),
+    [state, addMasterTask, deleteMasterTask, addTaskToDate, toggleTaskCompletion, addSubItem, moveTaskToDate, deleteDailyTask]
+  );
 
   return (
-    <TodoContext.Provider value={{} as any}>
-      {children}
-    </TodoContext.Provider>
+    <TodoContext.Provider value={contextValue}>{children}</TodoContext.Provider>
   );
-};
+}, []);
